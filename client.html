@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+       <title>Proph's Awesome Chat Room</title>
+       <style> 
+       body{
+            width: 99%; /* how wide to make your web page */
+            background-color: wheat;/* what color to make the background */
+            font:13px/17px Verdana, sans-serif; /* default font */
+            color: rgb(128, 0, 90);
+        }
+        #title {
+            text-shadow: 3px 3px 5px gray;
+            font-style: oblique;
+            text-align: center; 
+        }
+        #title, #enter {
+            text-align: center;
+            margin: 4% 30%;
+            width: 40%;
+        }
+        #logout {
+            display: inline-block;
+            margin-top: 1%;
+            margin-left: 9%;
+        }
+        #lobbyChat {
+            margin-top: 1.5%;
+            margin-left: 9%;
+        }
+        #createChatRoom, #nickname, #chatroomName, #deleteRoom {
+            display: inline-block;
+            margin-top: 1%;
+        }
+        #nickname, #chatroomName {
+            font-style: oblique;
+            margin-left: 1%;
+        }
+        #chatlog {
+            display: none;
+            margin-top: 1.5%;
+            margin-left: 9%;
+            width: 48%;
+            height: 300px;
+            border: 2px solid rgb(128, 0, 90);
+            background-color: rgb(238, 235, 235);
+            padding: 1.5%;
+            text-align: right;
+            overflow-x: auto;
+        }
+        #dmMessages {
+            margin-top: 45px;
+            width: 93%;
+            height: 197px;
+            border: 2px solid rgb(238, 235, 235);
+            background-color: rgb(238, 235, 235);
+            padding: 20px;
+            text-align: right;
+            overflow-x: auto;
+            color: rgb(128, 0, 90);
+        }
+
+        #chatrooms {
+            border: 2px solid rgb(128, 0, 90);
+            background-color: rgb(238, 235, 235);
+            width: 100%;
+            height: 160px;
+            text-align: center;
+            overflow-x: auto;
+            margin-left: 2%;
+        }
+        #currentUsers {
+            margin-top: 6.5%;
+            margin-left: 2%;
+            border: 2px solid rgb(128, 0, 90);
+            background-color: rgb(238, 235, 235);
+            width: 100%;
+            height: 160px;
+            text-align: center;
+            overflow-x: auto;
+        } 
+        #sidebar {
+            vertical-align: top;
+            display: none;
+            width: 16%;
+            height: 341.52px;
+            margin-top: 1.5%;
+        }
+        #sidebar2 {
+            vertical-align: top;
+            display: none;
+            width: 12%;
+            height: 341.51px;
+            margin-top: 1.5%;
+        }
+        #friendList {
+            margin-left: 8.4%;
+            border: 2px solid rgb(128, 0, 90);
+            background-color: rgb(238, 235, 235);
+            width: 100%;
+            height: 337px;
+            text-align: center;
+            overflow-x: auto;
+        }
+        #options {
+            margin-top: 10px;
+            margin-left: 5px;
+            text-align: left;
+        }
+        #friendOptions {
+            margin-top: 10px;
+            margin-left: 5px;
+            text-align: left;
+        }
+        /* The Modal (background) */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;/* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.5);
+        }
+        /* Modal Content/Box */
+        .modal-content {
+            background-color:rgb(128, 0, 90);
+            margin: 10% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 30%; /* Could be more or less, depending on screen size */
+            color: white;
+        }
+        .modal-content2 {
+            background-color: rgb(128, 0, 90);
+            margin: 10% auto; /* 15% from the top and centered */
+            padding: 25px;
+            border: 1px solid #888;
+            width: 50%; /* Could be more or less, depending on screen size */
+            color: white;
+        }
+        .modal-content3 {
+            background-color:rgb(128, 0, 90);
+            margin: 10% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 30%; /* Could be more or less, depending on screen size */
+            color: white;
+        }
+        /* The Close Button */
+        .close, .close2, .close3 {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover, .close:focus, .close2:hover, 
+        .close2:focus, .close3:hover, .close3:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .userdiv:hover, .userdiv:focus {
+            background-color: #b6b4b438;
+            border-radius: 11px;
+            cursor: pointer;
+        }
+        .userdiv, .roomButton {
+            margin-bottom: 3%;
+        }
+        </style>
+
+       <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+       <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+       <script src="/socket.io/socket.io.js"></script>
+       <script>
+
+            let current_room = "Lobby"; //user's current room 
+            let username; 
+            let DMed_user; //currently direct messaging user
+            let friendsList = []; //friend usernames
+
+            let temp_username; //holds entered nickname while it is pending
+            let pending_code = Math.random()*10000; //unique code used while nickname is pending "approval"
+
+            //called when user enters nickname and logs in
+            const login = function() {
+                temp_username = document.getElementById("nickname_input").value;
+                username = pending_code;
+                current_room = "Lobby";
+                socketio.emit("add_user", {user:temp_username}); //check if nickname is valid
+            }
+            const drawChat = function(){
+                clearChat();
+                //Prints current chatroom
+                document.getElementById('chatroomName').appendChild(document.createTextNode("Current Room: " + current_room));
+                //Prints current user
+                document.getElementById('nickname').appendChild(document.createTextNode("Hi, " + username + "!"));
+                //Hides login box
+                document.getElementById('enter').style.display = "none";
+                //Shows chat box and side bar boxes
+                document.getElementById('sidebar').style.display = "inline-block";
+                document.getElementById('sidebar2').style.display = "inline-block";
+                document.getElementById('chatlog').style.display = "inline-block";
+                //Creates logout button
+                $("#logout").append(`<button id="logout_btn" onclick="logout()">Logout</button>`);
+                //Creates "create new chat room" option for user
+                $("#createChatRoom").append(`<input type=text" id="chatroom_name" placeholder="Enter new room name" />
+                <button onclick="createChatRoom()">Create New Chat Room</button>`);
+                //Allows user to send messages
+                $("#lobbyChat").append(`<input type=text" id="message_input" placeholder='Send Message'"/>
+                <button onclick="sendMessage()">Send</button>`);
+                //Sets up box to display available chat rooms
+                $("#chatrooms").append("<h3>Chat Rooms</h3>");
+                //Sets up box to display current users
+                $("#currentUsers").append("<h3>Other Users</h3>");
+                //Sets up box to display users' friends list
+                $("#friendList").append("<h3>Friends Online</h3>");
+            }
+            const clearChat = function() {
+                document.getElementById('logout').innerHTML = "";
+                document.getElementById('createChatRoom').innerHTML = "";
+                document.getElementById('nickname').innerHTML = "";
+                document.getElementById('chatroomName').innerHTML = "";
+                document.getElementById('deleteRoom').innerHTML = "";
+                document.getElementById('chatlog').innerHTML = "";
+                document.getElementById('chatlog').style.display = "none";
+                document.getElementById('sidebar').style.display = "none";
+                document.getElementById('sidebar2').style.display = "none";
+                document.getElementById('chatrooms').innerHTML = "";
+                document.getElementById('currentUsers').innerHTML = "";
+                document.getElementById('lobbyChat').innerHTML = "";
+                document.getElementById('friendList').innerHTML = "";
+            }
+            //called when user logs out
+            const logout = function(){
+                clearChat();
+                document.getElementById('enter').style.display = "block";
+                socketio.emit("logout_user", {user:username});
+                socketio.emit("print_current_users_rooms", {});
+                pending_code = Math.random()*10000;
+                temp_username = "";
+                username = "";
+                friendsList = [];
+            }
+
+            //called when the user creates a new chat room
+            const createChatRoom = function(){
+                //ask if user would like chatroom to be password-protected:
+                let password = prompt("If you would like for this chatroom to be password-protected, enter a password. If not, press cancel.");
+                //send info to server, then if successfully created room, create object and append to chatroom array
+                let room_name = document.getElementById("chatroom_name").value;
+                socketio.emit("add_room", {room_name:room_name, creator:username, password:password});
+            }
+
+            //called when user clicks on the name of a chatroom (which is a button), and sends user to that chatroom
+            const sendToChatRoom = function(new_room){
+                socketio.emit("passwordExists", {new_room:new_room, currUser:username, current_room:current_room});
+            }
+
+            //called when user types in and sends a message to the chat
+            const sendMessage = function(){
+                let msg = document.getElementById("message_input").value;
+                socketio.emit("message_to_server", {currRoom: current_room, currUser:username, message:msg});
+            }
+
+            // Options window pops up when a user's name is clicked on
+            const optionsPopUp = function(otherUser, chat_rooms){
+                // Show the modal window
+                document.getElementById("optionsModal").style.display = "block";
+                // Clear modal window content
+                document.getElementById("options").innerHTML = "";
+                //Show user options content
+                let userText = document.createElement("strong");
+                userText.innerText = "User: ";
+                let userText2 = document.createTextNode(otherUser);
+                $("#options").append(userText);
+                $("#options").append(userText2);
+                $("#options").append(`<br><br>`);
+                $("#options").append(`<button id='dm_btn' name='dm_button' class='directMessage'> Direct Message </button><br><br>`);
+                document.getElementById("dm_btn").addEventListener("click", dmModalServer.bind(null, otherUser), false); //calls dmModalWindow function
+                if (chat_rooms[current_room].admin == username && otherUser != username) {
+                    $("#options").append(`<button id='temp_ban_btn' name='temp_ban_button' class='temp'> Temporarily Ban From Chatroom </button><br><br>`);
+                    $("#options").append(`<button id='permamently_ban_btn' name='perm_ban_button' class='perm'> Permanently Ban From Chatroom</button><br><br>`);
+                    document.getElementById("temp_ban_btn").addEventListener("click", tempBan.bind(null, otherUser), false); //calls tempBan function
+                    document.getElementById("permamently_ban_btn").addEventListener("click", permanentlyBan.bind(null, otherUser), false); //calls permBan function
+                }
+                if (!friendsList.includes(otherUser)) {
+                    $("#options").append(`<button id='add_friend_btn' name='addFriend_button' class='addFriend'> Add Friend </button><br><br>`);
+                    document.getElementById("add_friend_btn").addEventListener("click", addFriend.bind(null, otherUser), false); //calls addFriend function
+                }
+            }
+            // Friend options window pops up when a user's name is clicked on in the "Friends" list
+            const friendOptionsPopUp = function(otherUser){
+                // Show the modal window
+                document.getElementById("friendModal").style.display = "block";
+                // Clear modal window content
+                document.getElementById("friendOptions").innerHTML = "";
+                //Show friend options content
+                let userText = document.createElement("strong");
+                userText.innerText = "User: ";
+                let userText2 = document.createTextNode(otherUser);
+                $("#friendOptions").append(userText);
+                $("#friendOptions").append(userText2);
+                $("#friendOptions").append(`<br><br>`);
+                $("#friendOptions").append(`<button id='unAdd_friend_btn' name='unAdd_friend' class='unAdd'>Delete Friend</button><br><br>`);
+                document.getElementById("unAdd_friend_btn").addEventListener("click", removeFriend.bind(null, otherUser), false); //calls removeFriend function
+                $("#friendOptions").append(`<button id='invite_friend_btn' name='invite_friend' class='invite'>Invite Friend to Room</button><br><br>`);
+                document.getElementById("invite_friend_btn").addEventListener("click", inviteFriend.bind(null, otherUser, current_room), false); //calls inviteFriend function
+            }
+            //Requests to show direct message modal box for both users
+            const dmModalServer = function(DMedUser){
+                // Remove previous options modal window
+                document.getElementById("optionsModal").style.display = "none";
+                socketio.emit("dmModal", {DMedUser:DMedUser, currUser:username});
+            }
+            //Sends direct message content to server to show for both users
+            const sendDM = function(DMedUser){
+                let dmMsg = document.getElementById("dm_msg").value;
+                socketio.emit("dm_to_server", {DMedUser:DMedUser, currUser:username, message:dmMsg});
+            }
+            //Ban user from room temporarily
+            const tempBan = function(bannedUser){
+                document.getElementById("optionsModal").style.display = "none";
+                socketio.emit("banUser", {temp: true, current_room:current_room, bannedUser:bannedUser});
+            }
+            //Ban user from room permanently
+            const permanentlyBan = function(bannedUser){
+                document.getElementById("optionsModal").style.display = "none";
+                socketio.emit("banUser", {temp: false, current_room:current_room, bannedUser:bannedUser});
+            }
+            //Request to remove friend
+            const removeFriend = function(otherUser){
+                document.getElementById("optionsModal").style.display = "none";
+                document.getElementById("friendModal").style.display = "none";
+                socketio.emit("friendsList", {currentlyfriends: true, currUser:username, otherUser:otherUser});
+            }
+            //Request to add friend
+            const addFriend = function(otherUser){
+                document.getElementById("optionsModal").style.display = "none";
+                socketio.emit("friendsList", {currentlyfriends: false, currUser:username, otherUser:otherUser});
+            }
+            //Invite friend to current room
+            const inviteFriend = function(otherUser, currentRoom){
+                document.getElementById("friendModal").style.display = "none";
+                socketio.emit("invite_friend", {currUser:username, otherUser:otherUser, currentRoom:currentRoom});
+            }
+            //Sends server request to delete room
+            const deleteRoom = function(room){
+                socketio.emit("delete_room", {room_to_delete:room});
+            }
+
+            //receives info from server
+            var socketio = io.connect();
+
+            socketio.on("successful_login",function(data) {
+                if (username == pending_code) { //if username matched unique "pending code"
+                    username = temp_username; //update with actual nickname
+                    drawChat();
+                }
+            });
+            socketio.on("invalid_nickname",function(data) {
+                if (username == pending_code) { //if username matched unique "pending code"
+                    alert("This nickname has already been taken. Try another nickname.");
+                    temp_username = ""; //reset all variables
+                    username = "";
+                    pending_code = Math.random()*10000;
+                } 
+            });
+            socketio.on("print_users",function(data) { //print all current users on server
+                document.getElementById("currentUsers").innerHTML = "";
+                $("#currentUsers").append("<h3>Other Users</h3>");
+                let users_list = data['chatrooms'][current_room].currUsers;
+                for (let i=0; i<users_list.length; i++) {
+                    if (users_list[i] != username) {
+                        let userNode = document.createElement("div");
+                        userNode.classList.add("userdiv");
+                        userNode.appendChild(document.createTextNode(users_list[i]));
+                        document.getElementById("currentUsers").appendChild(userNode);
+                        //If name is clicked on, modal box will pop up with various options
+                        userNode.addEventListener("click", optionsPopUp.bind(null, users_list[i], data['chatrooms']), false);
+                    }
+                }
+            });
+            socketio.on("show_rooms",function(data) { //print all available rooms on server
+                document.getElementById('chatrooms').innerHTML = "";
+                $("#chatrooms").append("<h3>Chat Rooms</h3>");
+                for (let room in data['chatrooms']) {
+                    if (room != current_room) {
+                        let buttonNode = document.createElement("button");
+                        buttonNode.appendChild(document.createTextNode(room));
+                        buttonNode.classList.add("roomButton");
+                        document.getElementById("chatrooms").appendChild(buttonNode);
+                        buttonNode.addEventListener("click", sendToChatRoom.bind(null, room), false);
+                        document.getElementById("chatrooms").appendChild(document.createElement("br"));
+                        
+                    }  
+                }
+            });
+            socketio.on("checkPasswordExists",function(data) { //processing to send user to requested room
+                if (username == data['requested_by']) {
+                    if (!data['blacklist'].includes(username)) { //checks if user is blacklisted.
+                        if (data['exists']) { //prompts for password if necessary
+                            let entered_pword = prompt("Enter password to gain entry to the chatroom.");
+                            if (entered_pword != null) {
+                                socketio.emit("sendToRoom", {exists:true, entered_pword:entered_pword, new_room:data["new_room"], currUser:username, current_room:current_room});
+                            }
+                        }
+                        else {
+                            socketio.emit("sendToRoom", {exists:false, new_room:data["new_room"], currUser:username, current_room:current_room});
+                        }
+                    }
+                    else {
+                        alert("You have been banned from this chatroom. You cannot enter.")
+                    }         
+                }   
+            });
+            socketio.on("display_new_room",function(data) { //update current room to be the chatroom the user has just switched to
+                if (username == data['requested_by'])  {
+                    current_room = data["new_room"];
+                    if (data['banned']) {
+                        alert("You have been kicked out of your previous room.")
+                    }
+                    drawChat();
+                    if (username == data['chatrooms'][data["new_room"]].admin) { //if user is room admin, can delete room
+                        $("#deleteRoom").append(`<button id='delete_room_btn' name='delete_room_button'> Delete Chatroom </button>`);
+                        document.getElementById("delete_room_btn").addEventListener("click", deleteRoom.bind(null, data["new_room"]), false); //calls tempBan function
+                    }
+                }
+                socketio.emit("print_current_users_rooms", {});
+            });
+            socketio.on("send_to_lobby",function(data) { //room was deleted, users sent back to lobby
+                if (data['users'].includes(username) && data['old_room'] == current_room) {
+                    current_room = "Lobby";
+                    alert("This room has been deleted.")
+                    drawChat();
+                    socketio.emit("print_current_users_rooms", {});
+                }
+            });
+            socketio.on("incorrect_pword",function(data) { //if inputted password was incorrect
+                if (username == data['requested_by']) {
+                    alert("Incorrect password. Access to chatroom has been denied.");
+                }
+            });
+            socketio.on("message_to_client",function(data) { //show new message if user is in the room in which it was sent
+                if (current_room == data['requested_room'] && data['chatrooms'][data['requested_room']].currUsers.includes(username)) {
+                    let author = document.createElement("strong")
+                    author.innerText = data['requested_by'] + ":      ";
+                    author.id = 'message_author';
+                    document.getElementById("chatlog").appendChild(author);
+                    document.getElementById("chatlog").appendChild(document.createTextNode(data['message']));
+                    document.getElementById("chatlog").appendChild(document.createElement("hr"));
+                } 
+            });
+            socketio.on("dmModalWindow",function(data) { //show DM modal window for both users
+                // If username = user that clicked on the other user's name, or if username = name that was clicked on
+                if (username == data['requested_by'] || username == data['DMedUser']) {
+                    // Show the modal window
+                    document.getElementById("dmModal").style.display = "block";
+                    // Clear modal window content
+                    document.getElementById("sendMessage").innerHTML = "";
+                    document.getElementById("dmMessages").innerHTML = "";
+
+                    // Displays message textbox and button to send DM to other user
+                    if (username == data['requested_by']) {
+                        $("#sendMessage").append(` <br>`);
+                        let userText = document.createElement("strong");
+                        userText.innerText = "Send Message To: ";
+                        let userText2 = document.createTextNode(data['DMedUser']);
+                        $("#sendMessage").append(userText);
+                        $("#sendMessage").append(userText2);
+                        $("#sendMessage").append(` <br><br>`);
+                        $("#sendMessage").append(`<input type='text' id='dm_msg' placeholder='Send Message'/>`);
+                        $("#sendMessage").append(`<button id='send_dm_btn'>Send</button><br><br>`);
+                        document.getElementById("send_dm_btn").addEventListener("click", sendDM.bind(null, data['DMedUser']), false); //calls sendDM function
+                    }
+                    else {
+                        $("#sendMessage").append(` <br>`);
+                        let userText = document.createElement("strong");
+                        userText.innerText = "Send Message To: ";
+                        let userText2 = document.createTextNode(data['requested_by']);
+                        $("#sendMessage").append(userText);
+                        $("#sendMessage").append(userText2);
+                        $("#sendMessage").append(` <br><br>`);
+                        $("#sendMessage").append(`<input type='text' id='dm_msg' placeholder='Send Message'/>`);
+                        $("#sendMessage").append(`<button id='send_dm_btn'>Send</button><br><br>`);
+                        document.getElementById("send_dm_btn").addEventListener("click", sendDM.bind(null, data['requested_by']), false); //calls sendDM function
+                    }
+                }    
+            });
+            socketio.on("dm_to_client",function(data) { //show dm message content for both users
+                if (username == data['requested_by'] || username == data['DMedUser']) {
+                    // Show the modal window
+                    document.getElementById("dmModal").style.display = "block";
+                    //message will appear in modal box
+                    let author = document.createElement("strong")
+                    author.innerText = data['requested_by'] + ":      ";
+                    author.id = 'message_author';
+                    document.getElementById("dmMessages").appendChild(author);
+                    document.getElementById("dmMessages").appendChild(document.createTextNode(data['message']));
+                    document.getElementById("dmMessages").appendChild(document.createElement("hr"));
+                }    
+            });
+            socketio.on("removeFriend",function(data) { 
+                if (username == data['requested_by']) { //remove friend from friend list for user who requested it
+                    alert("Friend has been removed successfully.");
+                    for (let i=0; i<friendsList.length; i++) {
+                        if (friendsList[i] == data['otherUser']) {
+                            friendsList.splice(i, 1);
+                        }
+                    }
+                }
+                else if (username == data['otherUser']) { //remove other user from this user's friends list
+                    for (let i=0; i<friendsList.length; i++) {
+                        if (friendsList[i] == data['requested_by']) {
+                            friendsList.splice(i, 1);
+                        }
+                    }
+                } //remove friend if they logged out, disconnected, or reloaded page
+                else if (data['requested_by'] == "all" && friendsList.includes(data['otherUser'])) {
+                    for (let i=0; i<friendsList.length; i++) {
+                        if (friendsList[i] == data['otherUser']) {
+                            friendsList.splice(i, 1);
+                        }
+                    }
+                }  
+                socketio.emit("print_current_users_rooms", {}); //reprint all elements
+            });
+            socketio.on("friendRequest",function(data) { //if user has been sent a friend request
+                if (username == data['otherUser']) {
+                    //Either accept or deny the friend request
+                    if (window.confirm("You have been sent a friend request from " + data['requested_by'] + ". Would you like to accept?")){
+                        //if they have accepted friend request, then add this friend to their friends list
+                        friendsList.push(data['requested_by']);
+                        alert("Friend has been added successfully!");
+                        socketio.emit("friend_request", {accepted:true, requested_by:data['requested_by'], otherUser: data['otherUser']});
+                    }
+                    else {
+                        alert("Friend wasn't added.");
+                        socketio.emit("friend_request", {accepted:false, requested_by:data['requested_by'], otherUser: data['otherUser']});
+                    }
+                }
+            });
+            socketio.on("confirmed_add_friend",function(data) {
+                //if friend request has been accepted
+                if (data['accepted'] && username == data['requested_by']) {
+                    //add friend to user's friends list
+                    friendsList.push(data['otherUser']);
+                    alert("Friend has been added successfully!");
+                }
+                else if (username == data['requested_by']) {
+                    alert("Friend request was denied.");
+                }
+            });
+            socketio.on("print_friends",function(data) { //print all friends from user's friend list
+                document.getElementById("friendList").innerHTML = "";
+                $("#friendList").append("<h3>Friends Online</h3>");
+                for (let i=0; i<friendsList.length; i++) {
+                    let userNode = document.createElement("div");
+                    userNode.classList.add("userdiv");
+                    userNode.appendChild(document.createTextNode(friendsList[i]));
+                    document.getElementById("friendList").appendChild(userNode);
+                    //If name is clicked on, friend options modal box will pop up with various options (remove friend, invite friend to room)
+                    userNode.addEventListener("click", friendOptionsPopUp.bind(null, friendsList[i]), false);
+                }
+            });
+            socketio.on("send_invite",function(data) {
+                //if friend that has been invited is already in the room
+                if (username == data["otherUser"] && current_room == data["currentRoom"]) {
+                    socketio.emit("already_in_room", {currUser:data['currUser'], otherUser:data['otherUser']});
+                }
+                //if friend that has been invited is not in the room
+                else if (username == data["otherUser"]) {
+                    if (window.confirm("You have been invited to join chatroom " + data["currentRoom"] + " by " + data['currUser'] + ". Would you like to join?")){
+                        //if they would like to join the room, then move them to this new room
+                        let old_room = current_room;
+                        current_room = data["currentRoom"];
+                        alert("You have been added to chatroom " + data["currentRoom"] + " successfully!");
+                        socketio.emit("join_request", {accepted:true, currUser:data['currUser'], otherUser:data['otherUser'], currentRoom:data["currentRoom"], old_room:old_room});
+                    }
+                    else {
+                        socketio.emit("join_request", {accepted:false, currUser:data['currUser'], otherUser:data['otherUser'], currentRoom:data["currentRoom"]});
+                    }
+                }
+            });
+            socketio.on("print_already_in_room",function(data) { //alert if friend is already in the room
+                if (username == data["currUser"]) {
+                    alert(data["otherUser"] + " is already in this chatroom."); }
+            });
+
+            socketio.on("print_joined_room",function(data) { //alert if friend successfully joined room or not
+                if (username == data["currUser"])
+                {
+                    if (data["accepted"]) {
+                        alert(data["otherUser"] + " has accepted chatroom join request!");
+                    }
+                    else {
+                        alert(data["otherUser"] + " has declined to join chatroom.");
+                    }
+                }
+            });
+
+        </script>
+   </head>
+   <body>
+       <h1 id="title">Proph's Awesome Chat Room</h1>
+       <div id='enter'>
+           <input type="text" id="nickname_input" placeholder="Enter Nickname" />
+           <button id="enterchat_btn" onclick="login()">Enter Chat</button>
+       </div>
+       <div id='main'>
+           <div id='logout'></div>
+           <div id='createChatRoom'></div>
+           <div id='deleteRoom'></div>
+           <div id='nickname'></div>
+           <div id='chatroomName'></div>
+           <br>
+           <div id="chatlog"></div>
+           <div id='sidebar'>
+               <div id='chatrooms'></div>
+               <div id='currentUsers'></div>
+           </div>
+           <div id='sidebar2'>
+                <div id='friendList'></div>
+           </div>
+           <div id="lobbyChat"></div>
+            <!-- Options Modal -->
+           <div id="optionsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                <div id='options'></div>
+                </div> 
+            </div>
+           <!-- Direct Message Modal -->
+           <div id="dmModal" class="modal">
+                <div class="modal-content2">
+                    <span class="close2">&times;</span>
+                <div id='dmMessages'></div>
+                <div id='sendMessage'></div>
+                </div>
+            </div>
+            <!-- Friend Options Modal -->
+           <div id="friendModal" class="modal">
+                <div class="modal-content3">
+                    <span class="close3">&times;</span>
+                <div id='friendOptions'></div>
+                </div> 
+            </div>
+            </div>
+      
+       <script>
+        // When the user clicks on <span> (x), close the modal
+        document.getElementsByClassName("close")[0].onclick = function() {
+            document.getElementById("optionsModal").style.display = "none";
+        }
+        document.getElementsByClassName("close2")[0].onclick = function() {
+            document.getElementById("dmModal").style.display = "none";
+        }
+        document.getElementsByClassName("close3")[0].onclick = function() {
+            document.getElementById("friendModal").style.display = "none";
+        }
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+                if (event.target == document.getElementById("optionsModal")) {
+                    document.getElementById("optionsModal").style.display = "none";
+                }
+                else if (event.target == document.getElementById("dmModal")) {
+                    document.getElementById("dmModal").style.display = "none";
+                }
+                else if (event.target == document.getElementById("friendModal")) {
+                    document.getElementById("friendModal").style.display = "none";
+                }
+        }
+        </script>
+
+   </body>
+   
+</html>

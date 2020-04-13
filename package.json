@@ -1,0 +1,23 @@
+{
+  "name": "module6-group-module6-466622-464319",
+  "version": "1.0.0",
+  "description": "466622\r 464319",
+  "main": "chat-server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cse330-spring-2020/module6-group-module6-466622-464319.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cse330-spring-2020/module6-group-module6-466622-464319/issues"
+  },
+  "homepage": "https://github.com/cse330-spring-2020/module6-group-module6-466622-464319#readme",
+  "dependencies": {
+    "mime": "^2.4.4",
+    "socket.io": "^2.3.0"
+  }
+}
