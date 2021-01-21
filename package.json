@@ -18,6 +18,6 @@
   "homepage": "https://github.com/cse330-spring-2020/module6-group-module6-466622-464319#readme",
   "dependencies": {
     "mime": "^2.4.4",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.4.0"
   }
 }
